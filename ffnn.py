@@ -21,12 +21,11 @@ class FeedForwardNN(Sequential):
                  optimizer):
         super().__init__(loss_fn)
         self.layers = [
-            Linear(input_dim, hidden_dim, bias=True, optimizer=deepcopy(optimizer)),
+            Linear(input_dim, hidden_dim, optimizer),
             Swish(),
-            Linear(hidden_dim, output_dim, bias=True, optimizer=deepcopy(optimizer)),
+            Linear(hidden_dim, output_dim, optimizer),
             Sigmoid()
         ]
-        self.optimizer = optimizer
 
 
 # load the data
@@ -42,10 +41,10 @@ test_loader = DataLoader(X_test, y_test, 32, shuffle=False)
 # initialize
 ffnn = FeedForwardNN(input_dim=10, hidden_dim=5, output_dim=1,
                      loss_fn=MSE(),
-                     optimizer=SGD(learning_rate=1e-3))
+                     optimizer=SGD(learning_rate=1e-3, momentum=0.9))
 
 # train
-ffnn.train(epochs=10, train_loader=train_loader, val_loader=val_loader)
+ffnn.train(epochs=10, train_loader=train_loader, val_loader=val_loader, val_freq=2)
 
 # test
 ffnn.test(test_loader=test_loader)

@@ -1,5 +1,4 @@
 import numpy as np
-from library.parameter import Parameter
 
 
 class Layer:
@@ -11,36 +10,33 @@ class Layer:
 
 
 class Linear(Layer):
-    def __init__(self, input_dim, output_dim, bias, optimizer, initialization='He'):
+    def __init__(self, input_dim, output_dim, optimizer, bias=True, initialization='He'):
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.optimizer = optimizer
         self.bias = bias
         if initialization == 'Xavier':
             # Recommended for tanh or sigmoid activation
             limit = np.sqrt(6 / (input_dim + output_dim))
-            self.weights = Parameter(params=np.random.uniform(-limit, limit, (input_dim, output_dim)),
-                                     optimizer=optimizer)  # Weights matrix
+            self.weights = np.random.uniform(-limit, limit, (input_dim, output_dim))
         elif initialization == 'He':
             # Recommended for ReLU activation
             std = np.sqrt(2 / input_dim)
-            self.weights = Parameter(params=np.random.normal(0, std, (input_dim, output_dim)),
-                                     optimizer=optimizer)  # Weights matrix
+            self.weights = np.random.normal(0, std, (input_dim, output_dim))
         elif initialization == 'LeCun':
             # Recommended for SELU activation
             std = np.sqrt(1 / input_dim)
-            self.weights = Parameter(params=np.random.normal(0, std, (input_dim, output_dim)),
-                                     optimizer=optimizer)  # Weights matrix
+            self.weights = np.random.normal(0, std, (input_dim, output_dim))
         else:
             # Default is truncated random
             weights = np.random.normal(0, 1, (input_dim, output_dim))
-            weights = np.clip(weights, -2, 2)
-            self.weights = Parameter(params=weights,
-                                     optimizer=optimizer)  # Weights matrix
+            self.weights = np.clip(weights, -2, 2)
         if bias:
-            self.biases = Parameter(params=np.zeros(output_dim),
-                                    optimizer=optimizer)  # Bias vector
+            self.biases = np.zeros(output_dim)
         else:
             self.biases = None
+        self._weights_key = f'{id(self)}-weights'
+        self._biases_key = f'{id(self)}-biases'
         self.input = None
 
     def forward(self, x):
@@ -54,10 +50,10 @@ class Linear(Layer):
 
     def backward(self, grad):
         grad_w = np.dot(self.input.T, grad)
-        self.weights.step(grad_w)
+        self.weights = self.optimizer.update(self._weights_key, self.weights, grad_w)
         if self.bias:
             grad_b = np.mean(grad, axis=0)
-            self.biases.step(grad_b)
+            self.biases = self.optimizer.update(self._biases_key, self.biases, grad_b)
 
         grad = np.dot(grad, self.weights.T)
         return grad

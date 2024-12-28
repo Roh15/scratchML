@@ -1,9 +1,6 @@
 import numpy as np
 from tqdm import tqdm
 
-from library.layer import Layer
-from library.activations import Activation
-
 
 class Sequential:
     def __init__(self, loss_fn):
@@ -30,7 +27,7 @@ class Sequential:
 
         return np.mean(loss)  # Return the mean loss for monitoring
 
-    def train(self, epochs, train_loader, val_loader=None):
+    def train(self, epochs, train_loader, val_loader=None, val_freq=None):
         loss = {'train': []}
         if val_loader:
             loss['validation'] = []
@@ -61,28 +58,30 @@ class Sequential:
             loss['train'].append(avg_train_loss)
 
             if val_loader:
-                val_loss = 0
-                n_batches = 0
+                if (epoch + 1) % val_freq == 0 or epoch == epochs - 1:
+                    val_loss = 0
+                    n_batches = 0
 
-                val_batch_bar = tqdm(val_loader,
-                                     desc=f'Epoch {epoch + 1}/{epochs} Val',
-                                     leave=True)
+                    val_batch_bar = tqdm(val_loader,
+                                         desc=f'Val',
+                                         leave=True,
+                                         colour='green')
 
-                for val_data, val_targets in val_batch_bar:
-                    y_hat = self.forward(val_data)
-                    batch_loss = np.mean(self.loss_fn.forward(val_targets, y_hat))
-                    val_loss += batch_loss
-                    n_batches += 1
+                    for val_data, val_targets in val_batch_bar:
+                        y_hat = self.forward(val_data)
+                        batch_loss = np.mean(self.loss_fn.forward(val_targets, y_hat))
+                        val_loss += batch_loss
+                        n_batches += 1
 
-                    # Update progress bar with running average loss
-                    current_avg_loss = val_loss / n_batches
-                    val_batch_bar.set_postfix({
-                        'avg_loss': f'{current_avg_loss:.4f}'
-                    })
+                        # Update progress bar with running average loss
+                        current_avg_loss = val_loss / n_batches
+                        val_batch_bar.set_postfix({
+                            'avg_loss': f'{current_avg_loss:.4f}'
+                        })
 
-                # Calculate and store average epoch loss
-                avg_val_loss = val_loss / len(val_loader)
-                loss['validation'].append(avg_val_loss)
+                    # Calculate and store average epoch loss
+                    avg_val_loss = val_loss / len(val_loader)
+                    loss['validation'].append(avg_val_loss)
 
         return loss
 
@@ -92,7 +91,8 @@ class Sequential:
 
         test_batch_bar = tqdm(test_loader,
                               desc=f'Test',
-                              leave=True)
+                              leave=True,
+                              colour='red')
 
         for test_data, test_targets in test_batch_bar:
             y_hat = self.forward(test_data)
